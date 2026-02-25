@@ -8,5 +8,5 @@ CORS(app)
 def home():
     return jsonify({"status": "Backend connected 🚀"})
 
-def handler(request, context):
-    return app(request, context)
+# 👇 ESTA LÍNEA ES LA CORRECTA PARA VERCEL
+app = app
