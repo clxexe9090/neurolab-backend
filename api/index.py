@@ -1,20 +1,30 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from supabase_config import get_supabase
+from supabase import create_client
+import os
 import time
 
 app = Flask(__name__)
 CORS(app)
 
 # ==============================
+# Supabase Client
+# ==============================
+def get_supabase():
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+
+    if not url or not key:
+        raise Exception("Missing Supabase environment variables")
+
+    return create_client(url, key)
+
+# ==============================
 # Health Check
 # ==============================
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({
-        "status": "NeuroLab Backend Running 🚀"
-    })
-
+    return jsonify({"status": "NeuroLab Backend Running 🚀"})
 
 # ==============================
 # Receive IoT Data
@@ -40,12 +50,10 @@ def receive_data():
         accel = float(payload["accel"])
         timestamp = int(time.time())
 
-        # Normalization
         gsr_norm = min(max(gsr, 0), 1)
         sound_norm = min(max(sound, 0), 1)
         accel_norm = min(max(accel, 0), 1)
 
-        # Stress index
         stress_index = (
             0.4 * gsr_norm +
             0.3 * sound_norm +
@@ -56,16 +64,14 @@ def receive_data():
         if stress_index > 0.7:
             alert = "Possible overstimulation detected"
 
-        insert_data = {
+        supabase.table("sensor_data").insert({
             "device_id": device_id,
             "gsr": gsr_norm,
             "sound": sound_norm,
             "accel": accel_norm,
             "stress_index": stress_index,
             "timestamp": timestamp
-        }
-
-        supabase.table("sensor_data").insert(insert_data).execute()
+        }).execute()
 
         return jsonify({
             "status": "Data stored",
@@ -77,5 +83,4 @@ def receive_data():
         return jsonify({"error": str(e)}), 500
 
 
-# 🔥 CRÍTICO PARA VERCEL
 handler = app
